@@ -92,13 +92,13 @@ def pack(
     )
 
     if verbose:
-        click.echo("packing..")
+        click.echo("\npacking..")
 
     # write readme
     destination.mkdir(parents=True, exist_ok=False)
 
     readme = destination / "readme.txt"
-    readme.write_text(f"""This archive has been generated with uniquipy v{version('uniquipy')} at {datetime.now().isoformat()}
+    readme.write_text(f"""This archive has been generated with uniquipy v{version('uniquipy')} using the '{hash_algorithm}'-hashing method at {datetime.now().isoformat()}
 See https://github.com/RichtersFinger/uniquipy for details.
 
 The data-directory contains a copy of the original directory where duplicates of files have been removed.
@@ -125,7 +125,6 @@ Its original state can be restored with the 'unpack' command of uniquipy.
         copy(file, file_destination)
 
     if verbose:
-        click.echo("\n")
         click.echo(f"copied {str(len(uniques))} files")
         click.echo(f"built archive of unique files at {str(destination)}")
 
@@ -187,11 +186,18 @@ def unpack(
     index = (source / index_file_name).read_text(encoding="utf-8")
     uniques = index.split("\n\n")
 
-    for unique in uniques:
+    for progress, unique in enumerate(uniques):
         files = unique.split("\n")
         for file in files:
             (destination / file).parent.mkdir(parents=True, exist_ok=True)
             copy(source / "data" / files[0], destination / file)
 
+        if verbose:
+            src.default_progress_hook(
+                stage="making duplicates",
+                progress=(progress, len(uniques))
+            )
+
     if verbose:
+        click.echo("")
         click.echo(f"rebuild from archive of unique files at {str(destination)}")

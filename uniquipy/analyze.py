@@ -67,13 +67,13 @@ def analyze(
 
     # print results
     if verbose:
-        click.echo("\n")
+        click.echo("")
         click.echo(f"number of unique files: {len(uniques)}")
 
         if is_unique:
-            click.echo("Summary: no duplicates found")
+            click.echo("no duplicates found")
         else:
-            click.echo("Summary: there are duplicates")
+            click.echo("there are duplicates")
 
         # list duplicates
         click.echo("="*5 + " Details " + "="*5)
@@ -81,6 +81,9 @@ def analyze(
             if len(files) > 1:
                 click.echo(f"file '{files[0]}' has duplicate(s) at")
                 click.echo("\n".join(map(lambda x: f" * {str(x)}", files[1:])))
+
+        click.echo("="*5 + " Summary " + "="*5)
+        click.echo(f"total number of duplicate files: {len(list_of_files) - len(uniques)}")
     else:
         # arrange in blocks
         click.echo(
