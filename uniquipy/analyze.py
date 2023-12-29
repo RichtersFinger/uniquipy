@@ -44,7 +44,7 @@ def analyze(
     if not source.is_dir():
         if verbose:
             click.echo(
-                f"Invalid argument for input directory: {input_dir}",
+                f"Error: Invalid argument for input directory {input_dir}, directory does not exist.",
                 file=sys.stderr
             )
         sys.exit(1)
@@ -63,10 +63,26 @@ def analyze(
         hash_algorithm
     )
 
-    if is_unique:
-        click.echo("entire set of files appears to be unique")
-    else:
-        click.echo("set of files appears to have duplicates")
+    if verbose:
+        click.echo(f"number of unique files: {len(uniques)}")
 
-    click.echo(f"number of unique files: {len(uniques)}")
-    click.echo(f"{uniques}")
+    if verbose:
+        if is_unique:
+            click.echo("Summary: no duplicates found")
+        else:
+            click.echo("Summary: there are duplicates")
+
+    if verbose:
+        # list duplicates
+        click.echo("="*5 + " Details " + "="*5)
+        for files in uniques.values():
+            if len(files) > 1:
+                click.echo(f"file '{files[0]}' has duplicates at")
+                click.echo("\n".join(map(lambda x: f" * {str(x)}", files[1:])))
+    else:
+        # arrange in blocks
+        click.echo(
+            "\n\n".join(
+                "\n".join(map(str, files)) for files in uniques.values()
+            )
+        )
