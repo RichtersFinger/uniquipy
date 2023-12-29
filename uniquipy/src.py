@@ -120,7 +120,7 @@ def find_duplicates(
             # execute hook
             if progress_hook is not None:
                 progress_hook(
-                    stage=str(stage + 1),
+                    stage=f"Stage {str(stage + 1)}",
                     progress=(progress, len(uniques))
                 )
 
@@ -145,6 +145,6 @@ def default_progress_hook(**kwargs) -> None:
     n = 10
     s = "[" + "#"*int(p * n) + "-"*(n - int(p * n)) + "]"
     print(
-        f"[Stage {kwargs['stage']}] {s} ({p1}/{p2})",
+        f"[{kwargs['stage']}] {s} ({p1}/{p2})",
         end="\r"
     )
