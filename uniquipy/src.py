@@ -2,6 +2,7 @@
 This module contains definitions implementing the uniquipy-logic.
 """
 
+from typing import Optional, Callable
 from pathlib import Path
 import hashlib
 
@@ -49,7 +50,8 @@ def hash_from_file(
 
 def find_duplicates(
     files: list[Path],
-    hash_algorithm: str = "md5"
+    hash_algorithm: str = "md5",
+    progress_hook: Optional[Callable] = None
 ) -> tuple[bool, dict[str, list[Path]]]:
     """
     Returns a tuple of a boolean summary (whether or not duplicates exist among
@@ -62,35 +64,33 @@ def find_duplicates(
     hash_algorithm -- string identifier for the hashing algorithm used
                       (see definition of `HASHING_ALGORITHMS`)
                       (default 'md5')
+    progress_hook -- hook that is executed on progress;
+                     the keyword arguments of
+                     - `stage`: string-identifier of the current phase
+                     - `progress`: a tuple of two integers; completed tasks and
+                                   total tasks for the given stage
+                     are passed to the hook
+                     (default None)
     """
 
     # define the individual steps in the discrimination hierarchy
-    def size_discriminator(file: Path) -> str:
-        return str(file.stat().st_size)
-
-    def chunkhash_discriminator(file: Path) -> str:
-        return hash_from_file(
+    discriminator_hierarchy = [
+        lambda file: str(file.stat().st_size),
+        lambda file: hash_from_file(
             hash_algorithm,
             str(file),
             short=True
-        )
-
-    def fullhash_discriminator(file: Path) -> str:
-        return hash_from_file(
+        ),
+        lambda file: hash_from_file(
             hash_algorithm,
             str(file)
-        )
-
-    # configure hierarchy
-    discriminator_hierarchy = [
-        size_discriminator,
-        chunkhash_discriminator,
-        fullhash_discriminator
+        ),
     ]
 
     uniques = {"": files}
     is_unique = False
-    for discriminator in discriminator_hierarchy:
+    for stage, discriminator in enumerate(discriminator_hierarchy):
+        progress = 0
         if is_unique:
             break
 
@@ -101,20 +101,28 @@ def find_duplicates(
 
         # loop current dict
         is_unique = True
-        for current_value, files in uniques.items():
-            if len(files) == 1:
+        for current_value, _files in uniques.items():
+            progress = progress + 1
+            if len(_files) == 1:
                 continue
 
             # if a duplicate has been detected, mark original for deletion
             # and generate new keys for supposed duplicates
             delete_keys.append(current_value)
-            for file in files:
+            for file in _files:
                 new_value = f"{current_value}_{discriminator(file)}"
                 if new_value not in new_uniques:
                     new_uniques[new_value] = []
                 else:
                     is_unique = False
                 new_uniques[new_value].append(file)
+
+            # execute hook
+            if progress_hook is not None:
+                progress_hook(
+                    stage=str(stage + 1),
+                    progress=(progress, len(uniques))
+                )
 
         # cleanup
         for key in delete_keys:
