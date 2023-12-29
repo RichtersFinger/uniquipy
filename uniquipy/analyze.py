@@ -58,65 +58,15 @@ def analyze(
     if verbose:
         click.echo(f"working on a set of {len(list_of_files)} files")
 
-    uniques = {}
+    is_unique, uniques = src.find_duplicates(
+        list_of_files,
+        hash_algorithm
+    )
 
-    # first, discriminate by file-size
-    uniques_st_size = {}
-    is_unique = True
-    for file in list_of_files:
-        st_size = file.stat().st_size
-        if st_size not in uniques_st_size:
-            uniques_st_size[st_size] = []
-        else:
-            is_unique = False
-        uniques_st_size[st_size].append(file)
-
-    uniques_hashed_chunks = {}
-    # second (if necessary), use first chunk of bytes
-    if not is_unique:
-        if verbose:
-            click.echo(
-                "file size suggests duplicate files, continue with hashing first chunks.."
-            )
-        is_unique = True
-        for files in uniques_st_size.values():
-            for file in files:
-                hashed_chunk = src.hash_from_file(
-                    hash_algorithm,
-                    str(file),
-                    short=True
-                )
-                if hashed_chunk not in uniques_hashed_chunks:
-                    uniques_hashed_chunks[hashed_chunk] = []
-                else:
-                    is_unique = False
-                uniques_hashed_chunks[hashed_chunk].append(file)
+    if is_unique:
+        click.echo("entire set of files appears to be unique")
     else:
-        uniques = uniques_st_size
-
-    uniques_hashed = {}
-    # third (if necessary), use entire file for hashing
-    if not is_unique:
-        if verbose:
-            click.echo(
-                "first chunk suggests duplicate files, continue with hashing entire files.."
-            )
-        is_unique = True
-        for files in uniques_hashed_chunks.values():
-            for file in files:
-                hashed_chunk = src.hash_from_file(
-                    hash_algorithm,
-                    str(file)
-                )
-                if hashed_chunk not in uniques_hashed:
-                    uniques_hashed[hashed_chunk] = []
-                else:
-                    is_unique = False
-                uniques_hashed[hashed_chunk].append(file)
-
-        uniques = uniques_hashed
-    else:
-        uniques = uniques_hashed_chunks
+        click.echo("set of files appears to have duplicates")
 
     click.echo(f"number of unique files: {len(uniques)}")
     click.echo(f"{uniques}")
