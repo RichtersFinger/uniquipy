@@ -58,23 +58,11 @@ def analyze(
     if verbose:
         click.echo(f"working on a set of {len(list_of_files)} files")
 
-    # define progress hook
-    def progress_hook(**kwargs):
-        p1 = kwargs["progress"][0]
-        p2 = kwargs["progress"][1]
-        p = p1 / p2
-        n = 10
-        s = "[" + "#"*int(p * n) + "-"*(n - int(p * n)) + "]"
-        print(
-            f"[Stage {kwargs['stage']}] {s} ({p1}/{p2})",
-            end="\r"
-        )
-
     # run analysis
     is_unique, uniques = src.find_duplicates(
         list_of_files,
         hash_algorithm,
-        progress_hook=progress_hook if verbose else None
+        progress_hook=src.default_progress_hook if verbose else None
     )
 
     # print results
