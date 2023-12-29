@@ -132,3 +132,19 @@ def find_duplicates(
         uniques.update(new_uniques)
 
     return is_unique, uniques
+
+
+def default_progress_hook(**kwargs) -> None:
+    """
+    Default progress-hook that can be used with the function `find_duplicates`.
+    """
+
+    p1 = kwargs["progress"][0]
+    p2 = kwargs["progress"][1]
+    p = p1 / p2
+    n = 10
+    s = "[" + "#"*int(p * n) + "-"*(n - int(p * n)) + "]"
+    print(
+        f"[Stage {kwargs['stage']}] {s} ({p1}/{p2})",
+        end="\r"
+    )
