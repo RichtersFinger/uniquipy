@@ -11,6 +11,11 @@ import click
 from uniquipy import src
 from uniquipy.src import HASHING_ALGORITHMS as methods
 
+
+data_dir_name = "data"
+index_file_name = "index.txt"
+
+
 @click.command()
 @click.option(
     "-i", "--input-directory", "input_dir",
@@ -86,6 +91,9 @@ def pack(
         progress_hook=src.default_progress_hook if verbose else None
     )
 
+    if verbose:
+        click.echo("packing..")
+
     # write readme
     destination.mkdir(parents=True, exist_ok=False)
 
@@ -98,7 +106,7 @@ Its original state can be restored with the 'unpack' command of uniquipy.
 """, encoding="utf-8")
 
     # write index
-    index = destination / "index.txt"
+    index = destination / index_file_name
     index.write_text(
         "\n\n".join(
             "\n".join(
@@ -112,7 +120,7 @@ Its original state can be restored with the 'unpack' command of uniquipy.
     for files in uniques.values():
         file = files[0]
 
-        file_destination = destination / "data" / file.relative_to(source)
+        file_destination = destination / data_dir_name / file.relative_to(source)
         file_destination.parent.mkdir(parents=True, exist_ok=True)
         copy(file, file_destination)
 
@@ -121,18 +129,22 @@ Its original state can be restored with the 'unpack' command of uniquipy.
         click.echo(f"copied {str(len(uniques))} files")
         click.echo(f"built archive of unique files at {str(destination)}")
 
+
 @click.command()
-@click.option("-i", "--input-directory", "input_dir",
+@click.option(
+    "-i", "--input-directory", "input_dir",
     required=True,
     type=click.Path(exists=True),
     help="path to the (previously packed) input directory"
 )
-@click.option("-o", "--output-directory", "output_dir",
+@click.option(
+    "-o", "--output-directory", "output_dir",
     required=True,
-    type=click.Path(exists=True),
+    type=click.Path(exists=False),
     help="path to the (empty) output directory"
 )
-@click.option("-v", "--verbose", "verbose",
+@click.option(
+    "-v", "--verbose", "verbose",
     is_flag=True,
     help="verbose output"
 )
@@ -146,4 +158,40 @@ def unpack(
     destination.
     """
 
-    click.echo("reconstructing..")
+    source = Path(input_dir)
+    destination = Path(output_dir)
+
+    # make sure the target is valid
+    if not source.is_dir() \
+            or not (source / index_file_name).is_file() \
+            or not (source / data_dir_name).is_dir():
+        if verbose:
+            click.echo(
+                f"Error: Invalid argument for input directory {input_dir}, directory does not exist or has a bad format (expected 'index.txt' and 'data/').",
+                file=sys.stderr
+            )
+        sys.exit(1)
+    # make sure the destination is valid
+    if destination.exists():
+        if verbose:
+            click.echo(
+                f"Error: Invalid argument for output directory {output_dir}, directory already exists.",
+                file=sys.stderr
+            )
+        sys.exit(1)
+
+    if verbose:
+        click.echo("reconstructing..")
+
+    # read data
+    index = (source / index_file_name).read_text(encoding="utf-8")
+    uniques = index.split("\n\n")
+
+    for unique in uniques:
+        files = unique.split("\n")
+        for file in files:
+            (destination / file).parent.mkdir(parents=True, exist_ok=True)
+            copy(source / "data" / files[0], destination / file)
+
+    if verbose:
+        click.echo(f"rebuild from archive of unique files at {str(destination)}")
