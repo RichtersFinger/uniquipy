@@ -24,4 +24,4 @@ jobs:
         pip install .
     - name: Test with pytest
       run: |
-        pytest -v -s --cov=uniquipy.src
+        pytest -v -s --cov=uniquipy.src --cov=uniquipy.analyze --cov=uniquipy.pack
