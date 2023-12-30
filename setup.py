@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    version="0.1.0",
+    version="1.0.0",
     name="uniquipy",
     description="python cli-tool to find and handle file duplicates",
     author="Steffen Richters-Finger",
