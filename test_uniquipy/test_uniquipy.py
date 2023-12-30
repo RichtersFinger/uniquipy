@@ -11,7 +11,8 @@ from pathlib import Path
 from shutil import rmtree
 import hashlib
 import pytest
-from uniquipy import src
+from click.testing import CliRunner
+from uniquipy import src, analyze, pack
 
 @pytest.fixture(scope="session")
 def WORKING_DIR():
@@ -135,3 +136,198 @@ def test_find_duplicates(WORKING_DIR):
 
     # check
     assert not is_unique
+
+
+def test_analyze_verbose(WORKING_DIR):
+    """
+    Test functionality of the cli command `analyze`.
+    """
+
+    this_working_dir = WORKING_DIR / "test_analyze"
+    this_working_dir.mkdir(parents=True, exist_ok=False)
+
+    # write test-files
+    (this_working_dir / "test.txt").write_bytes(b"test1")
+    (this_working_dir / "test_.txt").write_bytes(b"test1")
+    (this_working_dir / "test2.txt").write_bytes(b"test2")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        analyze.analyze, ["-i", str(this_working_dir), "-v"]
+    )
+
+    assert result.exit_code == 0
+    assert "number of unique files: 2" in result.output
+    assert f"file '{str(this_working_dir / 'test.txt')}' has duplicate(s) at" in result.output \
+        or f"file '{str(this_working_dir / 'test_.txt')}' has duplicate(s) at" in result.output
+
+
+def test_analyze(WORKING_DIR):
+    """
+    Test functionality of the cli command `analyze`.
+    """
+
+    this_working_dir = WORKING_DIR / "test_analyze"
+    if this_working_dir.is_dir():
+        rmtree(this_working_dir)
+    this_working_dir.mkdir(parents=True, exist_ok=False)
+
+    # write test-files
+    (this_working_dir / "test.txt").write_bytes(b"test1")
+    (this_working_dir / "test_.txt").write_bytes(b"test1")
+    (this_working_dir / "test2.txt").write_bytes(b"test2")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        analyze.analyze, ["-i", str(this_working_dir)]
+    )
+
+    assert result.exit_code == 0
+    blocks = result.output.split("\n\n")
+    assert len(blocks) == 2
+    for block in blocks:
+        if len(block.split("\n")) == 1:
+            assert str(this_working_dir / "test2.txt") == block
+        else:
+            assert str(this_working_dir / "test.txt") in block \
+                and str(this_working_dir / "test_.txt") in block
+
+
+def test_pack_fail(WORKING_DIR):
+    """
+    Test functionality of the cli command `pack`.
+    """
+
+    this_working_dir_in = WORKING_DIR / "test_pack"
+    this_working_dir_out = WORKING_DIR / "test_packed"
+    if this_working_dir_in.is_dir():
+        rmtree(this_working_dir_in)
+    if this_working_dir_out.is_dir():
+        rmtree(this_working_dir_out)
+    this_working_dir_in.mkdir(parents=True, exist_ok=False)
+    this_working_dir_out.mkdir(parents=True, exist_ok=False)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pack.pack,
+        ["-i", str(this_working_dir_in), "-o", str(this_working_dir_out), "-v"]
+    )
+
+    assert result.exit_code == 1
+
+
+def test_pack(WORKING_DIR):
+    """
+    Test functionality of the cli command `pack`.
+    """
+
+    this_working_dir_in = WORKING_DIR / "test_pack"
+    this_working_dir_out = WORKING_DIR / "test_packed"
+    if this_working_dir_in.is_dir():
+        rmtree(this_working_dir_in)
+    if this_working_dir_out.is_dir():
+        rmtree(this_working_dir_out)
+    this_working_dir_in.mkdir(parents=True, exist_ok=False)
+
+    # write test-files
+    (this_working_dir_in / "test.txt").write_bytes(b"test1")
+    (this_working_dir_in / "test_.txt").write_bytes(b"test1")
+    (this_working_dir_in / "test2.txt").write_bytes(b"test2")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pack.pack,
+        ["-i", str(this_working_dir_in), "-o", str(this_working_dir_out), "-v"]
+    )
+
+    assert result.exit_code == 0
+    assert (this_working_dir_out / "index.txt").is_file()
+    assert (this_working_dir_out / "data").is_dir()
+    assert (this_working_dir_out / "data" / "test.txt").is_file()
+    assert (this_working_dir_out / "data" / "test.txt").read_bytes() == b"test1"
+    assert not (this_working_dir_out / "data" / "test_.txt").is_file()
+    assert (this_working_dir_out / "data" / "test2.txt").is_file()
+    assert (this_working_dir_out / "data" / "test2.txt").read_bytes() == b"test2"
+
+    blocks = (this_working_dir_out / "index.txt").read_text(encoding="utf-8").split("\n\n")
+    assert len(blocks) == 2
+    for block in blocks:
+        if len(block.split("\n")) == 1:
+            assert "test2.txt" == block
+        else:
+            assert "test.txt" in block and "test_.txt" in block
+
+
+def test_unpack_fail(WORKING_DIR):
+    """
+    Test functionality of the cli command `unpack`.
+    """
+
+    this_working_dir_in = WORKING_DIR / "test_packunpack"
+    this_working_dir_intermediate = WORKING_DIR / "test_packed"
+    this_working_dir_out = WORKING_DIR / "test_unpacked"
+    if this_working_dir_in.is_dir():
+        rmtree(this_working_dir_in)
+    if this_working_dir_intermediate.is_dir():
+        rmtree(this_working_dir_intermediate)
+    if this_working_dir_out.is_dir():
+        rmtree(this_working_dir_out)
+    this_working_dir_in.mkdir(parents=True, exist_ok=False)
+    this_working_dir_out.mkdir(parents=True, exist_ok=False)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pack.pack,
+        ["-i", str(this_working_dir_in), "-o", str(this_working_dir_intermediate), "-v"]
+    )
+
+    assert result.exit_code == 0
+
+    result = runner.invoke(
+        pack.unpack,
+        ["-i", str(this_working_dir_intermediate), "-o", str(this_working_dir_out), "-v"]
+    )
+
+    assert result.exit_code == 1
+
+
+def test_unpack(WORKING_DIR):
+    """
+    Test functionality of the cli command `unpack`.
+    """
+
+    this_working_dir_in = WORKING_DIR / "test_packunpack"
+    this_working_dir_intermediate = WORKING_DIR / "test_packed"
+    this_working_dir_out = WORKING_DIR / "test_unpacked"
+    if this_working_dir_in.is_dir():
+        rmtree(this_working_dir_in)
+    if this_working_dir_intermediate.is_dir():
+        rmtree(this_working_dir_intermediate)
+    if this_working_dir_out.is_dir():
+        rmtree(this_working_dir_out)
+    this_working_dir_in.mkdir(parents=True, exist_ok=False)
+
+    # write test-files
+    (this_working_dir_in / "test.txt").write_bytes(b"test1")
+    (this_working_dir_in / "test_.txt").write_bytes(b"test1")
+    (this_working_dir_in / "test2.txt").write_bytes(b"test2")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        pack.pack,
+        ["-i", str(this_working_dir_in), "-o", str(this_working_dir_intermediate), "-v"]
+    )
+
+    assert result.exit_code == 0
+
+    result = runner.invoke(
+        pack.unpack,
+        ["-i", str(this_working_dir_intermediate), "-o", str(this_working_dir_out), "-v"]
+    )
+
+    assert (this_working_dir_out / "test.txt").is_file()
+    assert (this_working_dir_out / "test.txt").read_bytes() == b"test1"
+    assert (this_working_dir_out / "test_.txt").is_file()
+    assert (this_working_dir_out / "test_.txt").read_bytes() == b"test1"
+    assert (this_working_dir_out / "test2.txt").is_file()
+    assert (this_working_dir_out / "test2.txt").read_bytes() == b"test2"
