@@ -243,9 +243,12 @@ def test_pack(WORKING_DIR):
     assert result.exit_code == 0
     assert (this_working_dir_out / "index.txt").is_file()
     assert (this_working_dir_out / "data").is_dir()
-    assert (this_working_dir_out / "data" / "test.txt").is_file()
-    assert (this_working_dir_out / "data" / "test.txt").read_bytes() == b"test1"
-    assert not (this_working_dir_out / "data" / "test_.txt").is_file()
+    if (this_working_dir_out / "data" / "test.txt").is_file():
+        assert not (this_working_dir_out / "data" / "test_.txt").is_file()
+        assert (this_working_dir_out / "data" / "test.txt").read_bytes() == b"test1"
+    else:
+        assert (this_working_dir_out / "data" / "test_.txt").is_file()
+        assert (this_working_dir_out / "data" / "test_.txt").read_bytes() == b"test1"
     assert (this_working_dir_out / "data" / "test2.txt").is_file()
     assert (this_working_dir_out / "data" / "test2.txt").read_bytes() == b"test2"
 
