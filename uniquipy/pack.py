@@ -117,15 +117,21 @@ Its original state can be restored with the 'unpack' command of uniquipy.
     )
 
     # write data
-    for files in uniques.values():
+    for progress, files in enumerate(uniques.values()):
         file = files[0]
 
         file_destination = destination / data_dir_name / file.relative_to(source)
         file_destination.parent.mkdir(parents=True, exist_ok=True)
         copy(file, file_destination)
 
+        if verbose:
+            src.default_progress_hook(
+                stage="copying data",
+                progress=(progress, len(uniques))
+            )
+
     if verbose:
-        click.echo(f"copied {str(len(uniques))} files")
+        click.echo(f"\ncopied {str(len(uniques))} files")
         click.echo(f"built archive of unique files at {str(destination)}")
 
 
