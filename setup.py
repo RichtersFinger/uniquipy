@@ -19,6 +19,7 @@ setup(
     project_urls={
         "Source": "https://github.com/RichtersFinger/uniquipy"
     },
+    python_requires=">=3.9, <4",
     install_requires=[
         "click>=8.1.7,<9.0.0",
     ],
