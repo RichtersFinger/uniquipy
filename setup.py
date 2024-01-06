@@ -6,7 +6,7 @@ long_description = \
     (Path(__file__).parent / "README.md").read_text(encoding="utf8")
 
 setup(
-    version="1.0.0",
+    version="1.1.0",
     name="uniquipy",
     description="python cli-tool to find and handle file duplicates",
     long_description=long_description,
